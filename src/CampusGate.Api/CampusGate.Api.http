@@ -1,0 +1,22 @@
+@baseUrl = http://localhost:5287
+
+# GET {{CampusGate.Api_HostAddress}}/weatherforecast/
+# Accept: application/json
+
+###
+### 1. List courses → 200, 3 items
+GET {{baseUrl}}/api/courses
+Accept: application/json
+
+### 2. Known course → 200
+GET {{baseUrl}}/api/courses/CS101
+
+### 3. Unknown course → 404
+GET {{baseUrl}}/api/courses/XX999
+
+### 4. Malformed code → 404 today (should be 400 — fixed in L02)
+GET {{baseUrl}}/api/courses/not-a-code!
+
+### 5. OpenAPI document
+GET {{baseUrl}}/openapi/v1.json
+
