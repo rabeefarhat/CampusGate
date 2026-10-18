@@ -1,0 +1,38 @@
+name: ci                                   # ① name shown in the Actions tab
+
+on:                                        # ② triggers
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+permissions:                               # ③ least privilege for GITHUB_TOKEN
+  contents: read
+
+concurrency:                               # ④ cancel outdated runs of the same PR
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:                                   # ⑤ job id = required check name "build"
+    runs-on: ubuntu-latest                 # ⑥ fresh Linux VM
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6          # ⑦
+        with:
+          persist-credentials: false       # ⑧
+
+      - name: Setup .NET from global.json
+        uses: actions/setup-dotnet@v5      # ⑨
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore CampusGate.slnx
+
+      - name: Build (warnings are errors)
+        run: dotnet build CampusGate.slnx --configuration Release --no-restore -warnaserror   # ⑩
+
+      - name: Test
+        run: dotnet test CampusGate.slnx --configuration Release --no-build   # ⑪ zero tests until L04
