@@ -87,7 +87,7 @@
 - Pre-terms used in L01–L02: course, course code (2–4 letters + 3 digits), faculty (`science`, `arts`), capacity, enrolment, student number (8 digits starting with 2; Luhn from L04), grading policy (max grade 20, max 30 days in the past).
 
 ### Environment
-- Visual Studio 2026 version: _fill in_ · workload: ASP.NET and web development ✓
+- Visual Studio 2026 version: 10.0.302 · workload: ASP.NET and web development ✓
 - .NET SDK: _fill in (10.0.x)_
 - GitHub account: ✓
 - Docker Desktop: ✓ (Engine running, ≥ 4 GB RAM — confirm before L04, SQL Server container)
