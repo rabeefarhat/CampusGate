@@ -2,7 +2,7 @@
 
 **20 lessons · ~2 hours each · 4 lessons a day · 5 days · 1 project that grows every lesson**
 
-Core: .NET 10 (LTS) · C# 14 · ASP.NET Core 10 (controllers, REST) · Clean Architecture · MediatR & CQRS · FluentValidation · Razor Pages · YARP · Serilog + Seq
+Core: .NET 10 (LTS) · C# 14 · ASP.NET Core 10 (controllers, REST) · **EF Core 10 · SQL Server** · Clean Architecture · MediatR & CQRS · FluentValidation · Razor Pages · YARP · Serilog + Seq
 **Security & identity:** web security · cryptography for identity · ASP.NET Core authentication & authorisation middleware · **OAuth 2.0** · **OpenID Connect** · **SAML 2.0** · JWT · **Keycloak** (admin, Admin REST API, themes, **Java SPI plugins**) · **Duende IdentityServer** · **Ping Identity** · Microsoft Entra ID · OWASP
 **DevOps:** Git · pull requests · branch protection · GitHub Actions CI · Dependabot · secret scanning · CodeQL · Docker
 Testing: xUnit · FluentAssertions 7.x · NSubstitute · Bogus · `WebApplicationFactory` · Testcontainers (Keycloak) · JUnit 5 (SPIs)
@@ -77,7 +77,7 @@ Four lessons a day is intense and Days 3–4 are the hardest. If a day overruns,
  Browser ─cookie─► CampusGate.Portal (Razor Pages BFF: OIDC code+PKCE, tokens server-side, YARP)
                         │ Bearer (user token)                     │ OIDC
                         ▼                                         ▼
-                  CampusGate.Api (Clean Architecture) ◄── trusts ── Keycloak (realm "campusgate", PostgreSQL)
+  SQL Server ◄─EF Core─ CampusGate.Api (Clean Architecture) ◄── trusts ── Keycloak (realm "campusgate", PostgreSQL)
                         ▲   uses CampusGate.Auth                     ├─ brokers ► Meridian IdentityServer (OIDC)
  Partner univ ─client credentials─┘                                 ├─ SAML IdP ► CampusGate.Tuition (SAML SP)
  Legacy attendance gateway ─X-Api-Key─► (custom handler, L15)       └─ SPIs: campusgate-claims mapper, account-status authenticator
@@ -88,13 +88,18 @@ Four lessons a day is intense and Days 3–4 are the hardest. If a day overruns,
 ```
  Api / Portal / Tuition hosts   ← composition roots, controllers, Razor Pages
  CampusGate.Auth                 ← shared auth middleware library (schemes, handlers, policies, claims transformation)
-   Infrastructure               ← repositories (in-memory adapters), Keycloak Admin client, token clients
+   Infrastructure               ← EF Core DbContext + repositories (SQL Server), Keycloak Admin client, token clients
      Application                ← use cases (MediatR), validators, behaviors, ports: ICurrentUser, IAuditLog, IIdentityProvisioning
        Domain                   ← Student, Course, Enrolment, Grade, StudentNumber, CourseCode, access rules
 ```
 Dependencies point inward. Swaps proven in the course: dev token issuer → Keycloak (L12) · single issuer → multiple issuers via policy scheme (L15, L19).
 
-🏛️ **Persistence note:** this course is about identity, so repositories are **thread-safe in-memory adapters** behind ports in Infrastructure. Say this honestly in interviews: "Persistence is an adapter; in production it would be EF Core on SQL Server or PostgreSQL." (Never the EF Core InMemory provider.)
+🏛️ **Persistence note:** CampusGate's own data (courses, enrolments, grades, audit log) lives in **SQL Server** through **EF Core 10**, behind repository ports in Infrastructure (from L04). **PostgreSQL** is used only where it's the natural choice: Keycloak's database (L11). Tests use real databases in containers (Testcontainers), **never the EF Core InMemory provider**.
+
+| Database | Used by | From |
+|---|---|---|
+| SQL Server (Docker, `mcr.microsoft.com/mssql/server`) | CampusGate.Api via EF Core; Meridian IdentityServer's ASP.NET Core Identity store | L04 · L19 |
+| PostgreSQL (Docker) | Keycloak | L11 |
 
 ### 1.4 The identity model (built from L11)
 
@@ -127,7 +132,7 @@ CampusGate (.slnx)
 │  ├─ CampusGate.Portal               # Razor Pages BFF (L13)
 │  └─ CampusGate.Tuition             # legacy-style Razor Pages app, SAML 2.0 SP (L16)
 ├─ identity
-│  ├─ docker-compose.yml             # Keycloak + PostgreSQL + Seq (L11)
+│  ├─ docker-compose.yml             # Keycloak + PostgreSQL + Seq (L11) — SQL Server is in the root compose file (L04)
 │  ├─ keycloak/realm-campusgate.json  # realm as code
 │  ├─ keycloak/themes/campusgate      # login theme (L17)
 │  ├─ keycloak/spi/campusgate-keycloak-extensions   # Java/Maven SPIs (L18)
@@ -154,7 +159,7 @@ CampusGate (.slnx)
 | L01 | Solution + first API (`CoursesController`), pushed to GitHub |
 | L02 | Pipeline, DI, config, validation, ProblemDetails, logging, health + REST API design |
 | L03 | Git & DevOps: branches, PRs, branch protection, GitHub Actions CI, Dependabot, secret scanning |
-| L04 | Clean Architecture, domain (`StudentNumber`, `Course`, `Grade`), MediatR, FluentValidation, behaviors, CQRS, tests |
+| L04 | Clean Architecture, domain (`StudentNumber`, `Course`, `Grade`), **EF Core + SQL Server**, MediatR, FluentValidation, behaviors, CQRS, tests |
 | **Day 2 — Security foundations** | |
 | L05 | Web security I: HTTP, TLS, certificates, origins, cookies, CORS, HSTS |
 | L06 | Web security II: OWASP Top 10, XSS, CSRF, open redirect, SSRF, security headers |
@@ -180,7 +185,7 @@ CampusGate (.slnx)
 
 | Day | 09:00–11:00 | 11:15–13:15 | 14:15–16:15 | 16:30–18:30 |
 |---|---|---|---|---|
-| **1** | L01 First API | L02 Fundamentals + REST | L03 Git & DevOps | L04 Clean Architecture + MediatR |
+| **1** | L01 First API | L02 Fundamentals + REST | L03 Git & DevOps | L04 Clean Architecture, EF Core + MediatR (2.5–3 h) |
 | **2** | L05 Web security I | L06 Web security II | L07 Cryptography | L08 ASP.NET Core auth |
 | **3** | L09 OAuth 2.0 | L10 OIDC | L11 Keycloak | L12 Securing the API |
 | **4** | L13 Portal BFF | L14 Service-to-service | L15 Auth middleware | L16 SAML 2.0 |
@@ -198,7 +203,7 @@ CampusGate (.slnx)
 
 ## 2. Before Lesson 1 — setup
 
-1. **Visual Studio 2026** with **ASP.NET and web development** (✓ installed). Check **Individual components**: .NET 10 Runtime (LTS), Git for Windows.
+1. **Visual Studio 2026** with **ASP.NET and web development** (✓ installed); its **Data storage and processing** workload (or SQL Server Data Tools) gives you SQL Server Object Explorer — optional: SQL Server Management Studio. Check **Individual components**: .NET 10 Runtime (LTS), Git for Windows.
 2. **GitHub account** (✓).
 3. **Docker Desktop** (✓) — Engine running, ≥ 4 GB RAM in **Settings > Resources**. Needed from **L09**.
 4. **A second browser profile** for logging in as two users — from L13.
@@ -335,46 +340,50 @@ CI is the test: a PR with a compile error is blocked; a warning is blocked (`-wa
 
 ---
 
-## L04 — Clean Architecture, the domain, MediatR, FluentValidation, behaviors & CQRS
-**Day 1 · Slot 4**
-**📍 Start:** one API project with logic in controllers. **🏁 End:** Domain / Application / Infrastructure / Api projects; `StudentNumber` and `CourseCode` value objects (Luhn check), `Course` aggregate with the enrolment and grading rules; MediatR **12.5.0** commands and queries; FluentValidation; logging + validation behaviors; thin controllers; an **`ICurrentUser` port** (fixed ⚠️ DEV ONLY user until L08); tests (xUnit, FluentAssertions 7.x, NSubstitute, Bogus) and **architecture tests**, all running in CI.
+## L04 — Clean Architecture, the domain, EF Core & SQL Server, MediatR & CQRS
+**Day 1 · Slot 4 (allow 2.5–3 hours)**
+**📍 Start:** one API project with logic in controllers. **🏁 End:** Domain / Application / Infrastructure / Api projects; `StudentNumber` and `CourseCode` value objects (Luhn check), `Course` aggregate with the enrolment and grading rules; MediatR **12.5.0** commands and queries; FluentValidation; logging + validation behaviors; thin controllers; an **`ICurrentUser` port** (fixed ⚠️ DEV ONLY user until L08); **`CampusGateDbContext` (EF Core 10) on SQL Server in Docker** with entity configurations, a first **migration**, a **rowversion concurrency token** on `Course`, repositories replacing the in-memory store, connection string in **User Secrets**; tests (xUnit, FluentAssertions 7.x, NSubstitute, Bogus, **Testcontainers SQL Server**) and **architecture tests**, all running in CI.
 
 ### Concepts
 🟢 **Core**
 - **Clean Architecture** (💡 an onion) ⚙️: the dependency rule, enforced by project references; ports & adapters; composition root.
 - **Domain modelling for security**: entity vs value object, invariants in factory methods ("parse, don't validate"), **input validation is a security control** (allow-list formats like `StudentNumber`).
+- **EF Core 10 & SQL Server** (💡 a translator between your C# objects and database tables) ⚙️: `DbContext` = a unit of work; change tracker (Added/Modified/Unchanged) → `SaveChangesAsync` → one transaction → SQL; LINQ translated to **parameterised SQL** (why that blocks SQL injection); mapping value objects (`StudentNumber`) with value converters / complex types; migrations (code → schema, reviewed in PRs); **optimistic concurrency** with a `rowversion` column → `DbUpdateConcurrencyException` → 409 (two students taking the last seat).
 - **MediatR, CQRS & pipeline behaviors** ⚙️: one handler per use case (load → domain → save); commands change state, queries read; behaviors wrap every request (logging → validation → [authorisation slot for L08] → handler).
 - **Testing toolkit**: AAA, `[Fact]`/`[Theory]`, FluentAssertions, NSubstitute for ports only, Bogus with a fixed seed, architecture tests (`NetArchTest.Rules` or `TngTech.ArchUnitNET` — verify).
 
 🔵 **Important**
+- `AsNoTracking` for queries (CQRS read side), projections to DTOs, `Include` vs N+1, `DbContext` is **scoped**, never singleton. Connection strings as secrets (SA password never committed; `.env` git-ignored, User Secrets locally, vault in production; least-privilege DB login in production, not `sa`). Migrations applied by a CI/CD step or script in production — not automatically at app start. SQL Server vs PostgreSQL in one line each.
 - FluentValidation vs DataAnnotations vs domain rules (three layers). **`ICurrentUser`**: Application asks "who is acting?" without knowing about tokens or `HttpContext`. Commands as an allow-list (anti mass-assignment). Licences: MediatR 12.5.0 and FluentAssertions 7.x pinned. Typed IDs. `TimeProvider`/`FakeTimeProvider` for "not in the future".
 
 ### 🧩 DDD notes
 - Value object (`StudentNumber`), aggregate (`Course` owns its enrolments and grades, so "never over capacity" and "no double enrolment" are enforced in one place, even when two students enrol at the same moment).
 
 ### ⚖️ 💣 ⬛
-- ⚖️ Clean Architecture vs CRUD ceremony. ⚖️ MediatR (uniform pipeline) vs indirection. ⚖️ Exceptions vs Result types.
-- 💣 Domain referencing infrastructure. 💣 Fat controllers. 💣 Behaviors registered in the wrong order (validation after the handler). 💣 `DateTime.Now` in the domain. 💣 Over-mocking.
-- ⬛ No `HttpContext` in Application · validate every command · state changes only through named domain methods · architecture rules as tests in CI · never mock what you own.
+- ⚖️ Clean Architecture vs CRUD ceremony. ⚖️ EF Core (productivity, migrations) vs Dapper/raw SQL (control, speed). ⚖️ Domain entities mapped directly vs separate persistence models. ⚖️ MediatR (uniform pipeline) vs indirection. ⚖️ Exceptions vs Result types.
+- 💣 Domain referencing infrastructure. 💣 Fat controllers. 💣 Behaviors registered in the wrong order (validation after the handler). 💣 `DateTime.Now` in the domain. 💣 Over-mocking. 💣 Lost update: two enrolments for the last seat both succeed (no concurrency token). 💣 N+1 queries. 💣 `Database.Migrate()` at startup on several instances at once. 💣 `A network-related or instance-specific error occurred while establishing a connection to SQL Server` / `Login failed for user 'sa'` (container not running, wrong port, wrong password). 💣 Connection string with password committed to a public repo.
+- ⬛ No `HttpContext` in Application · validate every command · state changes only through named domain methods · optimistic concurrency on aggregates · `AsNoTracking` reads · migrations reviewed and applied deliberately · connection strings never in Git · test against a real database, never the InMemory provider · architecture rules as tests in CI · never mock what you own.
 
 ### 🎬 Visuals
-- 🎬 The onion; an outward arrow turns red. 🎬 Request → Logging → Validation → Handler; an invalid command stopped.
+- 🎬 The onion; an outward arrow turns red. 🎬 Request → Logging → Validation → Handler; an invalid command stopped. 🎬 Change tracker → `SaveChanges` → SQL; two requests race for the last seat → the second gets `DbUpdateConcurrencyException` → 409.
 
 ### 🛠️ Build
 1. `CampusGate.Domain`, `.Application`, `.Infrastructure`; references; `AddApplication()` / `AddInfrastructure()`.
 2. Domain: `StudentNumber`, `CourseCode`, `Course` (`Enrol`, `RecordGrade`, `PublishGrades`, `CorrectGrade`), `Enrolment`, `Grade`, `DomainException` → 409 via the exception handler.
 3. MediatR 12.5.0 + FluentValidation; use cases `CreateCourse`, `EnrolStudent`, `RecordGrade`, `CorrectGrade`, `GetCourse`, `ListCourses`; `LoggingBehavior`, `ValidationBehavior`.
 4. `ICurrentUser` (Application) + `DevCurrentUser` (Infrastructure, ⚠️ DEV ONLY).
-5. Thin controllers sending commands/queries.
-6. Test projects + `CampusGate.Testing` (`StudentNumberFaker`, fixed seed); `docs/adr/ADR-001-clean-architecture.md`; `ci.yml` runs `dotnet test`.
+5. **SQL Server in Docker:** root `docker-compose.yml` with `mcr.microsoft.com/mssql/server` (pinned tag — verify), port 1433, a volume, SA password from a git-ignored `.env`; start it in Docker Desktop; connect with **View > SQL Server Object Explorer** in Visual Studio.
+6. **EF Core:** `Microsoft.EntityFrameworkCore.SqlServer` + `.Design` (10.0.x) in Infrastructure; `CampusGateDbContext`, `IEntityTypeConfiguration<T>` per entity (value converters for `StudentNumber`/`CourseCode`, unique index on (course, student), `rowversion` on `Course`); `EfCourseRepository` replaces the in-memory store; connection string `ConnectionStrings:CampusGate` in **Manage User Secrets**; first migration with **Tools > NuGet Package Manager > Package Manager Console** → `Add-Migration InitialCreate` / `Update-Database` (every word explained); seed 3 fictional courses; `DbUpdateConcurrencyException` → 409 in the exception handler.
+7. Thin controllers sending commands/queries.
+8. Test projects + `CampusGate.Testing` (`StudentNumberFaker`, fixed seed); `docs/adr/ADR-001-clean-architecture.md`; `ci.yml` runs `dotnet test`.
 
 ### 🧪 Tests (Part 3)
-`StudentNumber` theory (valid, 7/9 digits, letters, wrong check digit, wrong prefix, equality) · 1,000 Bogus student numbers all valid · enrolment rules (double enrolment fails; capacity reached → fails; after deadline fails) · grading rules (21 fails; published grade changed without correction fails; teacher correction with reason passes; future exam date fails; boundary 30 days ± 1 tick) · validators per rule · handler with NSubstitute store · behavior order · architecture: Domain references nothing, Application has no ASP.NET Core / Infrastructure reference. 💥 Add a Domain → Infrastructure reference → architecture test red locally **and in the PR** → remove.
+`StudentNumber` theory (valid, 7/9 digits, letters, wrong check digit, wrong prefix, equality) · 1,000 Bogus student numbers all valid · enrolment rules (double enrolment fails; capacity reached → fails; after deadline fails) · grading rules (21 fails; published grade changed without correction fails; teacher correction with reason passes; future exam date fails; boundary 30 days ± 1 tick) · validators per rule · handler with NSubstitute store · behavior order · **integration (Testcontainers SQL Server)**: migration applies cleanly; enrol → row saved with converted `StudentNumber`; duplicate enrolment → unique index / 409; two parallel enrolments for the last seat → one 201, one 409; query uses `AsNoTracking` and returns only DTO fields · architecture: Domain references nothing, Application has no ASP.NET Core / Infrastructure reference. 💥 Add a Domain → Infrastructure reference → architecture test red locally **and in the PR** → remove.
 
-### 🏁 PR `feat: Clean Architecture, domain, MediatR use cases, tests`
+### 🏁 PR `feat: Clean Architecture, domain, EF Core on SQL Server, MediatR use cases, tests`
 
 ### 🎤 Explain-it & interview
-1. The dependency rule? 2. Value object vs entity? 3. What do behaviors give you? 4. CQRS in one sentence — and when is it overkill? 5. 🎤 *"Why shouldn't your application layer read `HttpContext.User` directly?"* 6. 🎤 *"Where should an authorisation rule like 'teachers only grade courses in their own faculty' live?"*
+1. The dependency rule? 2. Value object vs entity? 3. What do behaviors give you? 4. CQRS in one sentence — and when is it overkill? 5. What does the change tracker do, and what is optimistic concurrency? 6. 🎤 *"Why shouldn't your application layer read `HttpContext.User` directly?"* 7. 🎤 *"How does EF Core protect you from SQL injection — and how can you still get it wrong?"* 6. 🎤 *"Where should an authorisation rule like 'teachers only grade courses in their own faculty' live?"*
 
 ---
 
@@ -433,7 +442,7 @@ CI is the test: a PR with a compile error is blocked; a warning is blocked (`-wa
 - **OWASP Top 10 & API Security Top 10** (verify current editions) — CampusGate's map.
 - **XSS** (💡 a note slipped into your letter that the reader obeys): stored, reflected, DOM; Razor encodes by default, `@Html.Raw` breaks it; **CSP** as a second wall; why XSS is fatal for tokens in the browser (→ BFF in L13).
 - **CSRF** ⚙️: the browser sends cookies automatically; defences: `SameSite`, **antiforgery tokens**, no state change on `GET`; why bearer-token APIs aren't CSRF-prone but cookie-based apps are.
-- **Broken access control & injection**: BOLA/IDOR preview (L08), mass assignment (L02), SQL injection (parameters — concept).
+- **Broken access control & injection**: BOLA/IDOR preview (L08), mass assignment (L02), SQL injection — demonstrated against SQL Server: `FromSqlRaw` with string concatenation (vulnerable) vs `FromSql($"...")` interpolation (parameterised).
 
 🔵 **Important**
 - **Open redirect** (`returnUrl` abuse — critical for login flows: `LocalRedirect`, `Url.IsLocalUrl`). **SSRF** (cloud metadata `169.254.169.254`; allow-list outbound hosts). Clickjacking. Security headers. Vulnerable dependencies (Dependabot from L03).
@@ -962,7 +971,7 @@ JUnit: mapper logic; authenticator decision function with Mockito. Integration (
 - 🎬 Meridian teacher → portal → Keycloak (`kc_idp_hint=meridian-medical`) → IdentityServer login → back → first-broker-login → CampusGate token. 🎬 Staged migration with dual issuers. Table: one concept across four platforms.
 
 ### 🛠️ Build
-1. `Meridian.IdentityServer` from the Duende templates (verify template name), ASP.NET Core Identity (SQLite or PostgreSQL container — verify store options), seeded users.
+1. `Meridian.IdentityServer` from the Duende templates (verify template name), ASP.NET Core Identity on **SQL Server** via EF Core (separate database `Meridian` in the same SQL Server container), seeded users.
 2. Clients `keycloak-broker` (code + PKCE) and `meridian-integration` (client credentials); `IProfileService` adding `meridian_staff_id`, `faculty`.
 3. Keycloak: Identity Provider **OpenID Connect v1.0** `meridian-medical`, allow-listed mappers (hard-coded role `teacher` only), first-broker-login reviewed.
 4. API: `Meridian` JWT scheme in the policy scheme; `api/v1/partner/meridian/grades` accepting Meridian client tokens with scope `meridian.grades`.
@@ -1014,6 +1023,7 @@ IdentityServer: token for `meridian-integration`; `IProfileService` adds expecte
 | Keycloak | `quay.io/keycloak/keycloak` : exact version (verify) → later `campusgate/keycloak` | 8080, management 9000 (verify) | with PostgreSQL; realm import |
 | PostgreSQL | `postgres` : pinned major supported by Keycloak (verify) | internal only | volume |
 | Seq | `datalust/seq` (verify licence env var) | 5341 / 80 | structured logs & security events |
+| SQL Server | `mcr.microsoft.com/mssql/server` : pinned tag (verify 2022/2025) | 1433 | CampusGate data (L04), Meridian Identity store (L19); SA password from git-ignored `.env` |
 
 ## Appendix C — Packages
 
@@ -1022,6 +1032,8 @@ IdentityServer: token for `meridian-integration`; `IProfileService` adds expecte
 | L04 | `MediatR` | **12.5.0 pinned** (Apache 2.0) |
 | L04 | `FluentValidation.DependencyInjectionExtensions` | latest |
 | L04 | `FluentAssertions` | **7.x pinned** (v8+ commercial) |
+| L04 | `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.EntityFrameworkCore.Design` | 10.0.x |
+| L04 | `Testcontainers.MsSql` | latest (verify) |
 | L04 | `NSubstitute`, `Bogus`, `NetArchTest.Rules` / `TngTech.ArchUnitNET.xUnit`, `Microsoft.Extensions.TimeProvider.Testing` | latest (verify) |
 | L02/L12 | `Serilog.AspNetCore`, `Serilog.Sinks.Seq` | latest (verify) |
 | L05 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.x |
@@ -1038,7 +1050,7 @@ IdentityServer: token for `meridian-integration`; `IProfileService` adds expecte
 |---|---|---|
 | Domain | Entities, value objects, business permission rules | Tokens, `HttpContext`, frameworks |
 | Application | Use cases, validators, behaviors, ports (`ICurrentUser`, `IIdentityProvisioning`, `IAuditLog`) | Repositories' implementations, IdP clients, controllers |
-| Infrastructure | In-memory repositories, `HttpCurrentUser`, `KeycloakAdminClient` | Business rules |
+| Infrastructure | `CampusGateDbContext`, EF Core configurations & migrations, repositories, `HttpCurrentUser`, `KeycloakAdminClient` | Business rules |
 | CampusGate.Auth | Schemes, handlers, policies, claims transformations, token handlers | Business rules |
 | Hosts (Api, Portal, Tuition) | Controllers/pages, middleware order, composition root | Business rules |
 

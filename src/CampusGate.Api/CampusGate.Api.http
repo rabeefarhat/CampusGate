@@ -1,22 +1,97 @@
-@baseUrl = http://localhost:5287
+@baseUrl = https://localhost:7072
 
-# GET {{CampusGate.Api_HostAddress}}/weatherforecast/
-# Accept: application/json
-
-###
-### 1. List courses → 200, 3 items
-GET {{baseUrl}}/api/courses
+### 1. List (default paging) → 200, page 1, pageSize 20, totalCount 3
+GET {{baseUrl}}/api/v1/courses
 Accept: application/json
 
-### 2. Known course → 200
-GET {{baseUrl}}/api/courses/CS101
+### 2. pageSize 1000 → 200, capped to pageSize 100
+GET {{baseUrl}}/api/v1/courses?page=1&pageSize=1000
 
-### 3. Unknown course → 404
-GET {{baseUrl}}/api/courses/XX999
+### 3. pageSize 0 → 400 ValidationProblemDetails
+GET {{baseUrl}}/api/v1/courses?pageSize=0
 
-### 4. Malformed code → 404 today (should be 400 — fixed in L02)
-GET {{baseUrl}}/api/courses/not-a-code!
+### 4. Known course (any case) → 200
+GET {{baseUrl}}/api/v1/courses/cs101
 
-### 5. OpenAPI document
+### 5. Unknown but well-formed → 404 ProblemDetails
+GET {{baseUrl}}/api/v1/courses/XX999
+
+### 6. Malformed code → 400 (fixed from L01)
+GET {{baseUrl}}/api/v1/courses/not-a-code!
+
+### 7. PUT new course → 201 + Location
+PUT {{baseUrl}}/api/v1/courses/LAW200
+Content-Type: application/json
+
+{ "title": "Introduction to Law", "faculty": "arts", "capacity": 2 }
+
+### 8. Same PUT again → 200, identical body (idempotent)
+PUT {{baseUrl}}/api/v1/courses/LAW200
+Content-Type: application/json
+
+{ "title": "Introduction to Law", "faculty": "arts", "capacity": 2 }
+
+### 9. PUT missing title → 400
+PUT {{baseUrl}}/api/v1/courses/LAW201
+Content-Type: application/json
+
+{ "faculty": "arts", "capacity": 10 }
+
+### 10. PUT without JSON content type → 415
+PUT {{baseUrl}}/api/v1/courses/LAW201
+Content-Type: text/plain
+
+hello
+
+### 11. Enrol → 201 + Location (extra "id" is ignored: over-posting blocked)
+POST {{baseUrl}}/api/v1/courses/LAW200/enrolments
+Content-Type: application/json
+X-Correlation-Id: demo-123
+
+{ "studentNumber": "20000004", "id": "00000000-0000-0000-0000-000000000001" }
+
+### 12. Same enrolment again → 409 already_enrolled
+POST {{baseUrl}}/api/v1/courses/LAW200/enrolments
+Content-Type: application/json
+
+{ "studentNumber": "20000004" }
+
+### 13. Second student → 201 (capacity 2 now full)
+POST {{baseUrl}}/api/v1/courses/LAW200/enrolments
+Content-Type: application/json
+
+{ "studentNumber": "20000012" }
+
+### 14. Third student → 409 course_full
+POST {{baseUrl}}/api/v1/courses/LAW200/enrolments
+Content-Type: application/json
+
+{ "studentNumber": "20000020" }
+
+### 15. Invalid student number → 400
+POST {{baseUrl}}/api/v1/courses/LAW200/enrolments
+Content-Type: application/json
+
+{ "studentNumber": "12345" }
+
+### 16. DELETE → 204
+DELETE {{baseUrl}}/api/v1/courses/LAW200
+
+### 17. DELETE again → 404 (same state: still gone → idempotent)
+DELETE {{baseUrl}}/api/v1/courses/LAW200
+
+### 18. Grading policy from validated options → 200 {maxGrade:20, maxPastDays:30}
+GET {{baseUrl}}/api/v1/grading-policy
+
+### 19. Unhandled exception → 500 ProblemDetails, NO stack trace, has traceId
+GET {{baseUrl}}/api/v1/diagnostics/boom
+
+### 20. Malicious correlation id → replaced by a generated one
+GET {{baseUrl}}/api/v1/courses
+X-Correlation-Id: this-is-way-too-long-and-has-bad-chars!!!-0123456789012345678901234567890123456789
+
+### 21. Health → 200 Healthy
+GET {{baseUrl}}/health
+
+### 22. OpenAPI document (Development only)
 GET {{baseUrl}}/openapi/v1.json
-

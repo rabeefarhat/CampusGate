@@ -26,7 +26,7 @@ Purpose: every lesson (≈ 2 hours, four per day), diagram, animation and handou
 - End every concept block with a one-line **"In short:"** summary inside a 🟨 takeaway callout.
 - Code in fenced blocks with a language tag; the file path goes in a comment on the first line. Build code is complete — never `...` placeholders.
 - Leave a blank line before and after every callout, table and code block.
-- **Never nest code fences.** A block that contains ``` must be fenced with a longer fence (`~~~~~` or ` ```` `). Whole files (continuity, handouts, code) are delivered as downloadable files, not pasted in pieces.
+- **Never nest code fences.** A block that contains ``` must be fenced with a longer fence (`~~~~~` or ` ```` `). The only file created at the end of a lesson is `02_CONTINUITY.md` (one downloadable file, never split); code stays inline in the lesson.
 
 ### 2.2 Callout convention (colour-coded blockquotes)
 
@@ -193,7 +193,7 @@ In animations: **primary** = where the action is now, **primary-soft** = already
 
 ---
 
-## 7. Lesson handout (end of every standard lesson)
+## 7. Lesson handout (only when I send `HANDOUT`)
 
 A single self-contained HTML page with the theme above, in this order:
 1. **Header** — lesson ID, title, goal, project step, Clean Architecture layer(s) touched.

@@ -1,5 +1,10 @@
 <Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/api-checklist.md" />
+    <File Path="docs/api-guidelines.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/CampusGate.Api/CampusGate.Api.csproj" />
+    <Project Path="src/CampusGate.Contracts/CampusGate.Contracts.csproj" Id="300285bb-cda9-4bba-9cb6-7cba27fcb872" />
   </Folder>
 </Solution>
